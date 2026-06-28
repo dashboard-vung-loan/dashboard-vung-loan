@@ -1,0 +1,333 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>YODY Dashboard Realtime - Vùng Loan</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    :root{
+      --yody-blue:#282279;
+      --yody-orange:#ffb000;
+      --bg:#f5f7fb;
+      --card:#ffffff;
+      --text:#172033;
+      --muted:#667085;
+      --green:#16a34a;
+      --red:#dc2626;
+      --yellow:#f59e0b;
+      --line:#e5e7eb;
+    }
+    *{box-sizing:border-box}
+    body{margin:0;font-family:Inter,Arial,sans-serif;background:var(--bg);color:var(--text)}
+    header{
+      background:linear-gradient(135deg,var(--yody-blue),#1b155d);
+      color:#fff;padding:24px 28px;border-bottom:7px solid var(--yody-orange);
+      position:sticky;top:0;z-index:10
+    }
+    .top{display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap}
+    .brand h1{margin:0;font-size:26px;letter-spacing:.2px}
+    .brand p{margin:6px 0 0;color:#e8e8ff;font-size:13px}
+    .badge{background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.25);padding:9px 12px;border-radius:999px;font-size:13px}
+    main{padding:22px;max-width:1500px;margin:auto}
+    nav{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:18px}
+    nav button{
+      border:0;background:#fff;color:var(--yody-blue);padding:10px 14px;border-radius:12px;
+      font-weight:700;box-shadow:0 1px 4px rgba(0,0,0,.08);cursor:pointer
+    }
+    nav button.active{background:var(--yody-blue);color:#fff}
+    .grid{display:grid;gap:16px}
+    .kpis{grid-template-columns:repeat(4,minmax(0,1fr))}
+    .card{background:var(--card);border-radius:18px;padding:18px;box-shadow:0 6px 20px rgba(32,28,100,.08);border:1px solid #eef0f7}
+    .kpi-title{font-size:12px;color:var(--muted);text-transform:uppercase;font-weight:800}
+    .kpi-value{font-size:28px;font-weight:900;color:var(--yody-blue);margin:8px 0 4px}
+    .kpi-sub{font-size:12px;color:var(--muted)}
+    .charts{grid-template-columns:1.2fr .8fr;margin-top:16px}
+    .section-title{font-size:20px;margin:0 0 14px;color:var(--yody-blue)}
+    table{width:100%;border-collapse:collapse;font-size:13px}
+    th{background:var(--yody-blue);color:#fff;text-align:left;padding:10px;position:sticky;top:93px;z-index:2}
+    td{padding:9px 10px;border-bottom:1px solid var(--line)}
+    tr:nth-child(even) td{background:#fafafa}
+    .num{text-align:right;font-variant-numeric:tabular-nums}
+    .pill{display:inline-block;padding:4px 8px;border-radius:999px;font-weight:800;font-size:12px}
+    .ok{background:#dcfce7;color:#166534}
+    .warn{background:#fef3c7;color:#92400e}
+    .bad{background:#fee2e2;color:#991b1b}
+    .insight{line-height:1.55}
+    .insight ul{margin:8px 0 0;padding-left:18px}
+    .insight li{margin:6px 0}
+    .tabs{display:none}
+    .tabs.active{display:block}
+    .filters{display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin-bottom:14px}
+    select,input{border:1px solid var(--line);border-radius:10px;padding:10px;background:#fff}
+    footer{padding:18px 22px;color:var(--muted);font-size:12px;text-align:center}
+    @media(max-width:900px){.kpis,.charts{grid-template-columns:1fr} th{top:118px}.brand h1{font-size:20px}}
+  </style>
+</head>
+<body>
+<header>
+  <div class="top">
+    <div class="brand">
+      <h1>YODY Dashboard Realtime - Vùng Loan</h1>
+      <p>Realtime từ Google Sheet • Văn phong báo cáo YODY • Phiên bản V3</p>
+    </div>
+    <div class="badge" id="lastUpdated">Đang tải dữ liệu...</div>
+  </div>
+</header>
+
+<main>
+  <nav>
+    <button class="active" data-tab="overview">Tổng quan</button>
+    <button data-tab="stores">Cửa hàng</button>
+    <button data-tab="goods">Hàng hóa</button>
+    <button data-tab="actions">Action Center</button>
+    <button data-tab="pitstop">Pitstop</button>
+  </nav>
+
+  <section id="overview" class="tabs active">
+    <div class="grid kpis">
+      <div class="card"><div class="kpi-title">Doanh thu</div><div class="kpi-value" id="kpiRevenue">--</div><div class="kpi-sub" id="kpiTarget">Target: --</div></div>
+      <div class="card"><div class="kpi-title">%HT MXN</div><div class="kpi-value" id="kpiMxn">--</div><div class="kpi-sub">Tiến độ kế hoạch</div></div>
+      <div class="card"><div class="kpi-title">AOV / UPT</div><div class="kpi-value" id="kpiAovUpt">--</div><div class="kpi-sub">Chất lượng hóa đơn</div></div>
+      <div class="card"><div class="kpi-title">Traffic / CVR</div><div class="kpi-value" id="kpiTrafficCvr">--</div><div class="kpi-sub">Chuyển đổi bán hàng</div></div>
+    </div>
+
+    <div class="grid charts">
+      <div class="card"><h2 class="section-title">Doanh thu theo cửa hàng</h2><canvas id="revenueChart"></canvas></div>
+      <div class="card"><h2 class="section-title">%HT MXN</h2><canvas id="mxnChart"></canvas></div>
+    </div>
+
+    <div class="card" style="margin-top:16px">
+      <h2 class="section-title">Nhận xét nhanh theo văn YODY</h2>
+      <div class="insight" id="autoInsight">Đang tổng hợp nhận xét...</div>
+    </div>
+  </section>
+
+  <section id="stores" class="tabs">
+    <div class="card">
+      <h2 class="section-title">Bảng hiệu quả cửa hàng</h2>
+      <div class="filters">
+        <label>Cửa hàng:</label><select id="storeFilter"><option value="">Tất cả</option></select>
+      </div>
+      <div style="overflow:auto"><table id="storeTable"></table></div>
+    </div>
+  </section>
+
+  <section id="goods" class="tabs">
+    <div class="grid charts">
+      <div class="card"><h2 class="section-title">Doanh thu nhóm hàng</h2><canvas id="goodsChart"></canvas></div>
+      <div class="card"><h2 class="section-title">% Hoàn thành nhóm hàng</h2><canvas id="goodsMxnChart"></canvas></div>
+    </div>
+    <div class="card" style="margin-top:16px">
+      <h2 class="section-title">Bảng hàng hóa / mã tập trung</h2>
+      <div style="overflow:auto"><table id="goodsTable"></table></div>
+    </div>
+  </section>
+
+  <section id="actions" class="tabs">
+    <div class="card">
+      <h2 class="section-title">Action Center</h2>
+      <div style="overflow:auto"><table id="actionTable"></table></div>
+    </div>
+  </section>
+
+  <section id="pitstop" class="tabs">
+    <div class="card">
+      <h2 class="section-title">Pitstop H1/H2 - Format YODY</h2>
+      <div style="overflow:auto">
+        <table>
+          <thead><tr><th>Khía cạnh</th><th>Điều hiệu quả</th><th>Điều chưa hiệu quả</th><th>Hành động tiếp theo H2</th></tr></thead>
+          <tbody id="pitstopBody"></tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+</main>
+<footer>YODY Dashboard V3 • Chỉ cần cập nhật Google Sheet, dashboard tự cập nhật khi tải lại trang.</footer>
+
+<script>
+const CSV_URLS = {
+  tong_quan: "https://docs.google.com/spreadsheets/d/e/2PACX-1vQH4IhMGmHFjnMKOjRR26tiqzyljso2shx8iIcZX49GyvaBIjtiLizOeuWS1-85oWc3UQP4DXVUpU-4/pub?gid=0&single=true&output=csv",
+  cua_hang: "https://docs.google.com/spreadsheets/d/e/2PACX-1vQH4IhMGmHFjnMKOjRR26tiqzyljso2shx8iIcZX49GyvaBIjtiLizOeuWS1-85oWc3UQP4DXVUpU-4/pub?gid=2058945689&single=true&output=csv",
+  hang_hoa: "https://docs.google.com/spreadsheets/d/e/2PACX-1vQH4IhMGmHFjnMKOjRR26tiqzyljso2shx8iIcZX49GyvaBIjtiLizOeuWS1-85oWc3UQP4DXVUpU-4/pub?gid=511918211&single=true&output=csv",
+  action: "https://docs.google.com/spreadsheets/d/e/2PACX-1vQH4IhMGmHFjnMKOjRR26tiqzyljso2shx8iIcZX49GyvaBIjtiLizOeuWS1-85oWc3UQP4DXVUpU-4/pub?gid=1586806248&single=true&output=csv"
+};
+
+let charts = {};
+let state = {stores:[], goods:[], actions:[], overview:[]};
+
+function parseCSV(text){
+  const rows=[]; let row=[], cell='', inQuotes=false;
+  for(let i=0;i<text.length;i++){
+    const c=text[i], n=text[i+1];
+    if(c === '"' && inQuotes && n === '"'){ cell+='"'; i++; }
+    else if(c === '"'){ inQuotes=!inQuotes; }
+    else if(c === ',' && !inQuotes){ row.push(cell.trim()); cell=''; }
+    else if((c === '\n' || c === '\r') && !inQuotes){
+      if(cell || row.length){ row.push(cell.trim()); rows.push(row); row=[]; cell=''; }
+      if(c === '\r' && n === '\n') i++;
+    } else cell+=c;
+  }
+  if(cell || row.length){ row.push(cell.trim()); rows.push(row); }
+  const headers = rows.shift() || [];
+  return rows.filter(r=>r.some(x=>x!=='')).map(r => Object.fromEntries(headers.map((h,i)=>[h.trim(), r[i] ?? ''])));
+}
+
+async function fetchCSV(url){
+  const res = await fetch(url + "&cacheBust=" + Date.now());
+  if(!res.ok) throw new Error("Không tải được CSV");
+  return parseCSV(await res.text());
+}
+
+function num(v){
+  if(v == null) return 0;
+  let s=String(v).replaceAll('.','').replace(',','.').replace(/[^\d.-]/g,'');
+  return parseFloat(s)||0;
+}
+function pct(v){ return num(v); }
+function fmtMoney(v){
+  const n=num(v);
+  if(n>=1e9) return (n/1e9).toFixed(2).replace('.',',')+" tỷ";
+  if(n>=1e6) return (n/1e6).toFixed(1).replace('.',',')+" triệu";
+  return n.toLocaleString('vi-VN');
+}
+function fmtPct(v){ return pct(v).toFixed(1).replace('.',',')+"%"; }
+function pick(row, keys){
+  for(const k of keys){ if(row[k] !== undefined && row[k] !== '') return row[k]; }
+  return '';
+}
+function statusClass(v){ const p=pct(v); return p>=100?'ok':p>=80?'warn':'bad'; }
+
+function renderTable(el, rows, columns){
+  const table=document.getElementById(el);
+  if(!rows.length){ table.innerHTML='<tr><td>Chưa có dữ liệu</td></tr>'; return; }
+  table.innerHTML = '<thead><tr>'+columns.map(c=>`<th>${c.label}</th>`).join('')+'</tr></thead><tbody>'+
+    rows.map(r=>'<tr>'+columns.map(c=>{
+      const raw = c.get?c.get(r):r[c.key];
+      const val = c.format?c.format(raw,r):raw;
+      const cls = c.num?'num':'';
+      return `<td class="${cls}">${val ?? ''}</td>`;
+    }).join('')+'</tr>').join('')+'</tbody>';
+}
+
+function makeChart(id,type,labels,data,label){
+  if(charts[id]) charts[id].destroy();
+  charts[id] = new Chart(document.getElementById(id), {
+    type, data:{labels, datasets:[{label,data,borderWidth:2}]},
+    options:{responsive:true,plugins:{legend:{display:type!=='bar'}},scales:type==='bar'?{y:{beginAtZero:true}}:{}}
+  });
+}
+
+function renderOverview(){
+  const stores = state.stores;
+  const totalRow = stores.find(r => /tổng|total/i.test(pick(r,['CỬA HÀNG','Cửa hàng','store','Tên CH']))) || {};
+  const normal = stores.filter(r => !/tổng|total/i.test(pick(r,['CỬA HÀNG','Cửa hàng','store','Tên CH'])));
+  const revenue = num(pick(totalRow,['Doanh thu','Doanh Thu','DT','Doanh thu MXN'])) || normal.reduce((a,r)=>a+num(pick(r,['Doanh thu','Doanh Thu','DT','Doanh thu MXN'])),0);
+  const target = num(pick(totalRow,['Target DT Tháng','Target DT MXN','Mục Tiêu Doanh Thu MXN','Target'])) || normal.reduce((a,r)=>a+num(pick(r,['Target DT Tháng','Target DT MXN','Mục Tiêu Doanh Thu MXN','Target'])),0);
+  const mxn = pct(pick(totalRow,['%HT DT MXN','% Hoàn Thành Doanh Thu MXN','%HT MXN','%HT DT tháng'])) || (target?revenue/target*100:0);
+  const aov = num(pick(totalRow,['AOV','AOV đơn'])) || avg(normal.map(r=>num(pick(r,['AOV','AOV đơn']))));
+  const upt = num(pick(totalRow,['UPT'])) || avg(normal.map(r=>num(pick(r,['UPT']))));
+  const traffic = num(pick(totalRow,['Traffic AI','Traffic'])) || normal.reduce((a,r)=>a+num(pick(r,['Traffic AI','Traffic'])),0);
+  const cvr = pct(pick(totalRow,['CVR AI','CVR'])) || avg(normal.map(r=>pct(pick(r,['CVR AI','CVR']))));
+
+  document.getElementById('kpiRevenue').textContent = fmtMoney(revenue);
+  document.getElementById('kpiTarget').textContent = "Target: " + fmtMoney(target);
+  document.getElementById('kpiMxn').textContent = fmtPct(mxn);
+  document.getElementById('kpiAovUpt').textContent = `${Math.round(aov).toLocaleString('vi-VN')} / ${upt.toFixed(2).replace('.',',')}`;
+  document.getElementById('kpiTrafficCvr').textContent = `${Math.round(traffic).toLocaleString('vi-VN')} / ${fmtPct(cvr)}`;
+
+  const sorted = [...normal].sort((a,b)=>num(pick(b,['Doanh thu','Doanh Thu','DT','Doanh thu MXN']))-num(pick(a,['Doanh thu','Doanh Thu','DT','Doanh thu MXN'])));
+  makeChart('revenueChart','bar',sorted.map(r=>pick(r,['CỬA HÀNG','Cửa hàng','store','Tên CH'])),sorted.map(r=>num(pick(r,['Doanh thu','Doanh Thu','DT','Doanh thu MXN']))),'Doanh thu');
+  makeChart('mxnChart','bar',sorted.map(r=>pick(r,['CỬA HÀNG','Cửa hàng','store','Tên CH'])),sorted.map(r=>pct(pick(r,['%HT DT MXN','% Hoàn Thành Doanh Thu MXN','%HT MXN','%HT DT tháng']))),'%HT MXN');
+
+  const bottom = [...normal].sort((a,b)=>pct(pick(a,['%HT DT MXN','% Hoàn Thành Doanh Thu MXN','%HT MXN','%HT DT tháng']))-pct(pick(b,['%HT DT MXN','% Hoàn Thành Doanh Thu MXN','%HT MXN','%HT DT tháng']))).slice(0,5);
+  document.getElementById('autoInsight').innerHTML = `
+    <ul>
+      <li>Doanh thu vùng đạt <b>${fmtPct(mxn)}</b> MXN, ${mxn>=100?'đạt tiến độ kế hoạch':'chưa đạt tiến độ kế hoạch'}.</li>
+      <li>Chất lượng bán hàng duy trì với AOV <b>${Math.round(aov).toLocaleString('vi-VN')}</b>, UPT <b>${upt.toFixed(2).replace('.',',')}</b>, CVR <b>${fmtPct(cvr)}</b>.</li>
+      <li>Nhóm cửa hàng cần tập trung: <b>${bottom.map(r=>pick(r,['CỬA HÀNG','Cửa hàng','store','Tên CH'])).join(', ')}</b>.</li>
+      <li>Hành động: OM review doanh thu theo ngày, điều hành traffic, CVR và tỷ lệ hóa đơn Sale tại các CH dưới 100% MXN.</li>
+    </ul>`;
+}
+
+function avg(arr){ const a=arr.filter(x=>x>0); return a.length?a.reduce((s,x)=>s+x,0)/a.length:0; }
+
+function renderStores(){
+  const rows = state.stores.filter(r => !/tổng|total/i.test(pick(r,['CỬA HÀNG','Cửa hàng','store','Tên CH'])));
+  const filter = document.getElementById('storeFilter');
+  if(filter.options.length===1){
+    rows.forEach(r=>{ const name=pick(r,['CỬA HÀNG','Cửa hàng','store','Tên CH']); if(name) filter.add(new Option(name,name)); });
+  }
+  const selected = filter.value;
+  const data = selected ? rows.filter(r=>pick(r,['CỬA HÀNG','Cửa hàng','store','Tên CH'])===selected) : rows;
+  renderTable('storeTable', data, [
+    {label:'Cửa hàng', get:r=>pick(r,['CỬA HÀNG','Cửa hàng','store','Tên CH'])},
+    {label:'Doanh thu', num:true, get:r=>pick(r,['Doanh thu','Doanh Thu','DT','Doanh thu MXN']), format:fmtMoney},
+    {label:'Target', num:true, get:r=>pick(r,['Target DT Tháng','Target DT MXN','Mục Tiêu Doanh Thu MXN','Target']), format:fmtMoney},
+    {label:'%HT MXN', num:true, get:r=>pick(r,['%HT DT MXN','% Hoàn Thành Doanh Thu MXN','%HT MXN','%HT DT tháng']), format:v=>`<span class="pill ${statusClass(v)}">${fmtPct(v)}</span>`},
+    {label:'AOV', num:true, get:r=>pick(r,['AOV','AOV đơn']), format:v=>Math.round(num(v)).toLocaleString('vi-VN')},
+    {label:'UPT', num:true, get:r=>pick(r,['UPT']), format:v=>num(v).toFixed(2).replace('.',',')},
+    {label:'Traffic', num:true, get:r=>pick(r,['Traffic AI','Traffic']), format:v=>Math.round(num(v)).toLocaleString('vi-VN')},
+    {label:'CVR', num:true, get:r=>pick(r,['CVR AI','CVR']), format:fmtPct},
+    {label:'Số đơn', num:true, get:r=>pick(r,['SL Đơn','Số đơn','Số Đơn']), format:v=>Math.round(num(v)).toLocaleString('vi-VN')}
+  ]);
+}
+
+function renderGoods(){
+  const rows = state.goods.filter(r => !/tổng|total/i.test(pick(r,['GROUP','sku_3_group','Nhóm hàng','Tên Sản Phẩm'])));
+  const labels = rows.map(r=>pick(r,['GROUP','sku_3_group','Nhóm hàng','Tên Sản Phẩm'])).slice(0,12);
+  const rev = rows.map(r=>num(pick(r,['Doanh Thu MXN','Doanh thu','Doanh Thu All','DT Đơn']))).slice(0,12);
+  const mxn = rows.map(r=>pct(pick(r,['% Hoàn Thành Doanh Thu MXN','%HT DT','% HT DT MXN KHB','% Hoàn Thành Số Lượng MXN']))).slice(0,12);
+  makeChart('goodsChart','bar',labels,rev,'Doanh thu');
+  makeChart('goodsMxnChart','bar',labels,mxn,'%HT');
+  renderTable('goodsTable', rows, [
+    {label:'Nhóm / mã', get:r=>pick(r,['GROUP','sku_3_group','Nhóm hàng','Tên Sản Phẩm'])},
+    {label:'Doanh thu', num:true, get:r=>pick(r,['Doanh Thu MXN','Doanh thu','Doanh Thu All','DT Đơn']), format:fmtMoney},
+    {label:'%HT', num:true, get:r=>pick(r,['% Hoàn Thành Doanh Thu MXN','%HT DT','% HT DT MXN KHB','% Hoàn Thành Số Lượng MXN']), format:v=>`<span class="pill ${statusClass(v)}">${fmtPct(v)}</span>`},
+    {label:'% đủ size', num:true, get:r=>pick(r,['% Đủ Size Chính Mã Chọn','% Đủ Size Chính - Mã Chọn','% Đủ Size Chính']), format:fmtPct},
+    {label:'Tồn + đi đường', num:true, get:r=>pick(r,['Tồn+Hàng Đi Đường','Tồn + Hàng Đi Đường']), format:v=>Math.round(num(v)).toLocaleString('vi-VN')},
+    {label:'Ngày bán còn lại', num:true, get:r=>pick(r,['Ngày Bán Còn Lại','Ngày Bán Còn Lại Off']), format:v=>Math.round(num(v)).toLocaleString('vi-VN')}
+  ]);
+}
+
+function renderActions(){
+  renderTable('actionTable', state.actions, Object.keys(state.actions[0]||{Mục_tiêu:'',Hành_động:'',Output:'',Kết_quả:''}).map(k=>({label:k,key:k})));
+  const items = [
+    ['Doanh thu','AOV, UPT duy trì tốt; nhóm CH top kéo kết quả vùng.','La Gi, Liên Hương, Đà Lạt, Gia Nghĩa chưa đạt MXN.','OM review 2 khung giờ/ngày tại CH dưới 100% MXN; điều hành doanh thu theo ngày.'],
+    ['Traffic','Một số CH duy trì traffic tốt từ nhận diện Trade và hoạt náo.','Traffic thấp ảnh hưởng trực tiếp số đơn.','Triển khai hoạt náo 16h-18h; mục tiêu tăng traffic tối thiểu 15%.'],
+    ['CVR','CVR nhóm CH tốt cho thấy KBBH có hiệu quả.','CH dưới 50% CVR cần đào tạo trực tiếp.','Đào tạo KBBH Sale, coaching CGTV theo ca bán.'],
+    ['Hàng hóa','Nhóm Polo, T-shirt, Short có sức bán.','Một số nhóm thiếu size, tồn lệch cửa hàng.','LC rà soát đủ size và cân chuyển hàng hóa 1 lần/tuần.']
+  ];
+  document.getElementById('pitstopBody').innerHTML = items.map(r=>`<tr>${r.map(x=>`<td>${x}</td>`).join('')}</tr>`).join('');
+}
+
+async function init(){
+  try{
+    const [overview, stores, goods, actions] = await Promise.all([
+      fetchCSV(CSV_URLS.tong_quan).catch(()=>[]),
+      fetchCSV(CSV_URLS.cua_hang),
+      fetchCSV(CSV_URLS.hang_hoa),
+      fetchCSV(CSV_URLS.action).catch(()=>[])
+    ]);
+    state = {overview, stores, goods, actions};
+    renderOverview(); renderStores(); renderGoods(); renderActions();
+    document.getElementById('lastUpdated').textContent = "Cập nhật: " + new Date().toLocaleString('vi-VN');
+  }catch(e){
+    console.error(e);
+    document.getElementById('lastUpdated').textContent = "Lỗi tải dữ liệu";
+    document.getElementById('autoInsight').innerHTML = "Không tải được dữ liệu Google Sheet. Kiểm tra quyền xuất bản CSV.";
+  }
+}
+
+document.querySelectorAll('nav button').forEach(btn=>{
+  btn.addEventListener('click',()=>{
+    document.querySelectorAll('nav button').forEach(b=>b.classList.remove('active'));
+    document.querySelectorAll('.tabs').forEach(t=>t.classList.remove('active'));
+    btn.classList.add('active'); document.getElementById(btn.dataset.tab).classList.add('active');
+  });
+});
+document.getElementById('storeFilter').addEventListener('change',renderStores);
+init();
+</script>
+</body>
+</html>
