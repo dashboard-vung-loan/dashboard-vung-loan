@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>YODY Dashboard Realtime - Vùng Loan</title>
+  <link rel="stylesheet" href="style.css" />
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+  <header class="topbar">
+    <div>
+      <div class="brand">YODY</div>
+      <div class="subtitle">DASHBOARD REALTIME · VÙNG OM LOAN</div>
+    </div>
+    <div class="updated" id="updated">Đang tải dữ liệu...</div>
+  </header>
+
+  <section class="alert-strip">
+    <span class="chip red">Focus: La Gi</span>
+    <span class="chip orange">Traffic & Số đơn chưa đạt</span>
+    <span class="chip green">AOV / UPT duy trì tốt</span>
+    <span class="chip navy">Chương trình Sale</span>
+  </section>
+
+  <main class="container">
+    <section class="kpi-grid" id="kpiGrid"></section>
+
+    <section class="grid-2">
+      <div class="card">
+        <h3>Doanh thu theo cửa hàng</h3>
+        <canvas id="revenueChart"></canvas>
+      </div>
+      <div class="card">
+        <h3>%HT MXN theo cửa hàng</h3>
+        <canvas id="mxnChart"></canvas>
+      </div>
+    </section>
+
+    <section class="card">
+      <div class="section-head">
+        <h3>Bảng cửa hàng</h3>
+        <input id="storeSearch" placeholder="Tìm cửa hàng..." />
+      </div>
+      <div class="table-wrap">
+        <table id="storeTable"></table>
+      </div>
+    </section>
+
+    <section class="grid-2">
+      <div class="card">
+        <h3>Hàng hóa / Nhóm hàng</h3>
+        <div class="table-wrap">
+          <table id="goodsTable"></table>
+        </div>
+      </div>
+      <div class="card">
+        <h3>Action Center</h3>
+        <div class="table-wrap">
+          <table id="actionTable"></table>
+        </div>
+      </div>
+    </section>
+
+    <section class="card">
+      <h3>Nhận xét nhanh theo văn YODY</h3>
+      <ul id="insights" class="insights"></ul>
+    </section>
+  </main>
+
+  <script src="script.js"></script>
+</body>
+</html>
